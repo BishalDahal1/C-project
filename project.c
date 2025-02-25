@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <conio.h>
 #include <time.h>
 #include <windows.h>
@@ -39,6 +38,9 @@ void changePin(struct Account *acc);
 void deleteAccount(char *accountNumber);
 void logSecurityEvent(const char *eventDescription);
 int checkLoginAttempts(struct Account *acc);
+void lockFile(FILE *logFile);
+void unlockFile(FILE *logFile);
+
 
 // Main function
 int main() {
@@ -382,64 +384,38 @@ void logSecurityEvent(const char *eventDescription) {
         return;
     }
 
-    
-    if (void lockFile(FILE *logFile) {
-        HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(logFile));
-        LockFile(hFile, 0, 0, 1, 0);
-    }
-    
-    void unlockFile(FILE *logFile) {
-        HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(logFile));
-        UnlockFile(hFile, 0, 0, 1, 0);
-    } == -1) {
-        perror("Error locking security log file");
-        fclose(logFile);
-        return;
-    }
+    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(logFile));
+    LockFile(hFile, 0, 0, 1, 0);  // Lock file
 
-    
     time_t currentTime = time(NULL);
-    if (currentTime == (time_t)-1) {
-        perror("Error getting current time");
-        flock(fileno(logFile), LOCK_UN);
-        fclose(logFile);
-        return;
-    }
-
-    
     struct tm *timeInfo = localtime(&currentTime);
-    if (timeInfo == NULL) {
-        perror("Error converting time");
-        flock(fileno(logFile), LOCK_UN);
-        fclose(logFile);
-        return;
-    }
-
     char timeStr[20];
     strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", timeInfo);
 
-    
     fprintf(logFile, "%s - %s\n", timeStr, eventDescription);
 
-    
-    flock(fileno(logFile), LOCK_UN);
+    UnlockFile(hFile, 0, 0, 1, 0);  // Unlock file
     fclose(logFile);
 }
 
-//Chat GPT
+
 void getSecureInput(char *input, int length) {
     int i = 0;
     char ch;
-    while ((ch = _getch()) != '\r' && i < length - 1) {  
-        if (ch == '\b' && i > 0) {  
-            printf("\b \b");  
-            i--;  
-        } else if (ch != '\b') {  
-            input[i++] = ch;  
-            printf("*");  
+    while (i < length - 1) {
+        ch = _getch();
+        if (ch == '\r') {  // Enter key
+            break;
+        } else if (ch == '\b' && i > 0) {  // Backspace
+            printf("\b \b");
+            i--;
+        } else if (ch >= '0' && ch <= '9') {  // Accept only digits
+            input[i++] = ch;
+            printf("*");
         }
     }
-    input[i] = '\0';  
-    printf("\n");  
+    input[i] = '\0';
+    printf("\n");
 }
+
 
